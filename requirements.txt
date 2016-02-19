@@ -1,0 +1,6 @@
+Django==1.7.1
+setuptools
+pytest==2.7.2
+pytest-django==2.8.0
+django-registration
+django-registration-defaults

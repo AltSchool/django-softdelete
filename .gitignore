@@ -1,6 +1,8 @@
 *.pyc
 *.pyo
 *~
+.cache/
+build/
 .installed.cfg
 bin
 develop-eggs
@@ -9,4 +11,5 @@ downloads
 eggs
 parts
 src/*.egg-info
+*.egg-info
 my_db
