@@ -59,6 +59,15 @@ class SoftDeleteQuerySet(query.QuerySet):
             logging.debug(" -----  CALLING delete() on %s" % obj)
             obj.delete(using, *args, **kwargs)
 
+    def hard_delete(self, *args, **kwargs):
+        """Actually permanently delete these objects"""
+        if not len(self):
+            return
+        logging.debug("STARTING QUERYSET HARD-DELETE: %s. %s" % (self, len(self)))
+        for obj in self:
+            logging.debug(" ----   CALLING hard_delete() on %s" % obj)
+            obj.hard_delete(*args, **kwargs)
+
     def undelete(self, using='default', *args, **kwargs):
         logging.debug("UNDELETING %s" % self)
         for obj in self:
@@ -112,7 +121,7 @@ class SoftDeleteManager(models.Manager):
         if 'pk' in kwargs:
             qs = self.all_with_deleted().filter(*args, **kwargs)
         else:
-            qs = self._get_base_queryset().filter(*args, **kwargs)
+            qs = self.get_queryset().filter(*args, **kwargs)
         qs.__class__ = SoftDeleteQuerySet
         return qs
 
@@ -164,29 +173,31 @@ class SoftDeleteObject(models.Model):
                 except:
                     getattr(self, rel).__class__.objects.all().delete()
 
-    def delete(self, *args, **kwargs):
-        if self.deleted_at:
-            logging.debug("HARD DELETEING type %s, %s" % (type(self), self))
+    def hard_delete(self, *args, **kwargs):
+        logging.debug("HARD DELETEING type %s, %s" % (type(self), self))
+        try:
+            cs = ChangeSet.objects.get(
+                content_type=ContentType.objects.get_for_model(self),
+                object_id=self.pk)
+            cs.delete()
+        except:
             try:
-                cs = ChangeSet.objects.get(
+                cs = kwargs.get('changeset') or _determine_change_set(self)
+                rs = SoftDeleteRecord.objects.get(
+                    changeset=cs,
                     content_type=ContentType.objects.get_for_model(self),
                     object_id=self.pk)
-                cs.delete()
-                super(SoftDeleteObject, self).delete(*args, **kwargs)
+                if rs.changeset.soft_delete_records.count() == 1:
+                    cs.delete()
+                else:
+                    rs.delete()
             except:
-                try:
-                    cs = kwargs.get('changeset') or _determine_change_set(self)
-                    rs = SoftDeleteRecord.objects.get(
-                        changeset=cs,
-                        content_type=ContentType.objects.get_for_model(self),
-                        object_id=self.pk)
-                    if rs.changeset.soft_delete_records.count() == 1:
-                        cs.delete()
-                    else:
-                        rs.delete()
-                    super(SoftDeleteObject, self).delete(*args, **kwargs)
-                except:
-                    pass
+                pass
+        super(SoftDeleteObject, self).delete(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        if self.deleted_at:
+          self.hard_delete(*args, **kwargs)
         else:
             using = kwargs.get('using', settings.DATABASES['default'])
             models.signals.pre_delete.send(sender=self.__class__,
