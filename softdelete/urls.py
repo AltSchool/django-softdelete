@@ -1,5 +1,9 @@
-from django.conf.urls.defaults import *
-from softdelete.views import *
+import sys
+
+from django.conf.urls import patterns, url, include
+from django.contrib import admin
+
+from softdelete.views import ChangeSetList, ChangeSetUpdate, ChangeSetDetail
 
 urlpatterns = patterns('softdelete.views',
                        url(r'^changeset/(?P<changeset_pk>\d+?)/undelete/$',
@@ -13,9 +17,7 @@ urlpatterns = patterns('softdelete.views',
                            name="softdelete.changeset.list"),
                        )
 
-import sys
 if 'test' in sys.argv:
-    from django.contrib import admin
     admin.autodiscover()
     urlpatterns += patterns('', url(r'^admin/', include(admin.site.urls)))
     urlpatterns += patterns('', url(r'^accounts/', include('registration.urls')))

@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.test import TestCase, Client
 from django.contrib.auth.models import User
+from django.core.urlresolvers import reverse
 from django.db import models
 from softdelete.test_softdelete_app.models import TestModelOne, TestModelTwo
 from softdelete.models import *
